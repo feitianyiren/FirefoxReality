@@ -16,6 +16,8 @@
 #include <vrb/RunnableQueue.h>
 #if defined(OCULUSVR)
 #include "DeviceDelegateOculusVR.h"
+#elif defined(OPENXR)
+#include "DeviceDelegateOpenXR.h"
 #endif
 
 #include <android/looper.h>
@@ -31,6 +33,9 @@ using namespace crow;
 #if defined(OCULUSVR)
 typedef DeviceDelegateOculusVR PlatformDeviceDelegate;
 typedef DeviceDelegateOculusVRPtr PlatformDeviceDelegatePtr;
+#elif defined(OPENXR)
+typedef DeviceDelegateOpenXR PlatformDeviceDelegate;
+typedef DeviceDelegateOpenXRPtr PlatformDeviceDelegatePtr;
 #endif
 
 namespace {
@@ -231,8 +236,6 @@ android_main(android_app *aAppState) {
       if (pSource) {
         pSource->process(aAppState, pSource);
       }
-
-
 
       // Check if we are exiting.
       if (aAppState->destroyRequested != 0) {
