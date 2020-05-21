@@ -32,6 +32,9 @@ public:
   void ReleaseImage();
   void BindFBO();
   void Destroy();
+  inline XrSwapchain SwapChain() const { return swapchain;}
+  inline int32_t Width() const { return info.width; }
+  inline int32_t Height() const { return info.height; }
 };
 
 }

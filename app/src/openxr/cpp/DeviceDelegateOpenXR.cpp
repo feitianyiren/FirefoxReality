@@ -70,8 +70,6 @@ struct DeviceDelegateOpenXR::State {
   XrTime predictedDisplayTime = 0;
   uint32_t discardedFrameIndex = 0;
   int discardCount = 0;
-  uint32_t renderWidth = 0;
-  uint32_t renderHeight = 0;
   vrb::Color clearColor;
   float near = 0.1f;
   float far = 100.f;
@@ -234,7 +232,7 @@ struct DeviceDelegateOpenXR::State {
     info.mipCount = 1;
     info.faceCount = 1;
     info.sampleCount = viewConfig.front().recommendedSwapchainSampleCount;
-    info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+    info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     return info;
   }
 
@@ -625,8 +623,9 @@ DeviceDelegateOpenXR::StartFrame(const FramePrediction aPrediction) {
     vrb::Matrix eyeTransform = XrPoseToMatrix(view.pose);
     m.cameras[i]->SetEyeTransform(eyeTransform);
 
-    vrb::Matrix perspective = vrb::Matrix::PerspectiveMatrix(view.fov.angleLeft, view.fov.angleRight,
-        view.fov.angleUp, view.fov.angleDown, m.near, m.far);
+
+    vrb::Matrix perspective = vrb::Matrix::PerspectiveMatrix(fabsf(view.fov.angleLeft), view.fov.angleRight,
+        view.fov.angleUp, fabsf(view.fov.angleDown), m.near, m.far);
     m.cameras[i]->SetPerspective(perspective);
 
     if (m.immersiveDisplay) {
@@ -634,8 +633,8 @@ DeviceDelegateOpenXR::StartFrame(const FramePrediction aPrediction) {
       auto toRadians = [](float angle) -> float {
         return angle * 180.0f / (float)M_PI;
       };
-      m.immersiveDisplay->SetFieldOfView(eye, toRadians(view.fov.angleLeft), toRadians(view.fov.angleRight),
-          toRadians(view.fov.angleUp), toRadians(view.fov.angleDown));
+      m.immersiveDisplay->SetFieldOfView(eye, toRadians(fabsf(view.fov.angleLeft)), toRadians(view.fov.angleRight),
+          toRadians(view.fov.angleUp), toRadians(fabsf(view.fov.angleDown)));
     }
   }
 }
@@ -660,13 +659,9 @@ DeviceDelegateOpenXR::BindEye(const device::Eye aWhich) {
   m.boundEyeSwapChain = m.eyeSwapChains[index];
   m.boundEyeSwapChain->AcquireImage();
   m.boundEyeSwapChain->BindFBO();
-  VRB_GL_CHECK(glViewport(0, 0, m.renderWidth, m.renderHeight));
+  VRB_GL_CHECK(glViewport(0, 0, m.boundEyeSwapChain->Width(), m.boundEyeSwapChain->Height()));
   VRB_GL_CHECK(glClearColor(m.clearColor.Red(), m.clearColor.Green(), m.clearColor.Blue(), m.clearColor.Alpha()));
   VRB_GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-
-  /*for (const OculusLayerPtr& layer: m.uiLayers) {
-    layer->SetCurrentEye(aWhich);
-  }*/
 }
 
 void
@@ -680,15 +675,31 @@ DeviceDelegateOpenXR::EndFrame(const FrameEndMode aEndMode) {
     m.boundEyeSwapChain = nullptr;
   }
 
-  VRB_ERROR("makelele EndFrame1");
+  std::vector<XrCompositionLayerBaseHeader*> layers;
+
+  XrCompositionLayerProjection projectionLayer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+  std::vector<XrCompositionLayerProjectionView> projectionLayerViews;
+  projectionLayerViews.resize(m.views.size());
+  for (int i = 0; i < m.views.size(); ++i) {
+    const OpenXRSwapChainPtr& viewSwapChain =  m.eyeSwapChains[i];
+    projectionLayerViews[i] = {XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW};
+    projectionLayerViews[i].pose = m.views[i].pose;
+    projectionLayerViews[i].fov = m.views[i].fov;
+    projectionLayerViews[i].subImage.swapchain = viewSwapChain->SwapChain();
+    projectionLayerViews[i].subImage.imageRect.offset = {0, 0};
+    projectionLayerViews[i].subImage.imageRect.extent = {viewSwapChain->Width(), viewSwapChain->Height()};
+    projectionLayer.space = m.viewSpace;
+    projectionLayer.viewCount = (uint32_t)projectionLayerViews.size();
+    projectionLayer.views = projectionLayerViews.data();
+  }
+  layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&projectionLayer));
 
   XrFrameEndInfo frameEndInfo{XR_TYPE_FRAME_END_INFO};
   frameEndInfo.displayTime = m.predictedDisplayTime;
   frameEndInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
-  frameEndInfo.layerCount = 0;
-  frameEndInfo.layers = nullptr;
+  frameEndInfo.layerCount = (uint32_t )layers.size();
+  frameEndInfo.layers = layers.data();
   CHECK_XRCMD(xrEndFrame(m.session, &frameEndInfo));
-  VRB_ERROR("makelele EndFrame2");
 }
 
 VRLayerQuadPtr

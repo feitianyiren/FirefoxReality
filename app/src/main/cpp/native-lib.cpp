@@ -257,7 +257,6 @@ android_main(android_app *aAppState) {
     }
     sAppContext->mQueue->ProcessRunnables();
     if (!BrowserWorld::Instance().IsPaused() && sAppContext->mDevice->IsInVRMode()) {
-      VRB_GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
       BrowserWorld::Instance().Draw();
     }
   }
