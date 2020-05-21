@@ -26,6 +26,7 @@
 #include <array>
 #include <cstdlib>
 #include <unistd.h>
+#include <string.h>
 
 #include "VRBrowser.h"
 
@@ -34,6 +35,7 @@
 #include <openxr/openxr_oculus.h>
 #include "OpenXRHelpers.h"
 #include "OpenXRSwapChain.h"
+#include "OpenXRInput.h"
 
 namespace crow {
 
@@ -61,8 +63,8 @@ struct DeviceDelegateOpenXR::State {
   XrSpace viewSpace = XR_NULL_HANDLE;
   XrSpace localSpace = XR_NULL_HANDLE;
   XrSpace stageSpace = XR_NULL_HANDLE;
-  std::vector<XrReferenceSpaceType> spaces;
   std::vector<int64_t> swapchainFormats;
+  OpenXRInput input;
   device::RenderMode renderMode = device::RenderMode::StandAlone;
   vrb::CameraEyePtr cameras[2];
   FramePrediction framePrediction = FramePrediction::NO_FRAME_AHEAD;
@@ -81,9 +83,6 @@ struct DeviceDelegateOpenXR::State {
   vrb::Matrix reorientMatrix = vrb::Matrix::Identity();
   device::CPULevel minCPULevel = device::CPULevel::Normal;
   device::DeviceType deviceType = device::UnknownType;
-
-  void UpdatePerspective() {
-  }
 
   void Initialize() {
     vrb::RenderContextPtr localContext = context.lock();
@@ -372,6 +371,9 @@ struct DeviceDelegateOpenXR::State {
       stageSpace = XR_NULL_HANDLE;
     }
 
+    // Release input
+    input.Destroy();
+
     // Shutdown OpenXR instance
     if (instance) {
       CHECK_XRCMD(xrDestroyInstance(instance));
@@ -462,7 +464,6 @@ void
 DeviceDelegateOpenXR::SetClipPlanes(const float aNear, const float aFar) {
   m.near = aNear;
   m.far = aFar;
-  m.UpdatePerspective();
 }
 
 void
@@ -477,7 +478,7 @@ DeviceDelegateOpenXR::ReleaseControllerDelegate() {
 
 int32_t
 DeviceDelegateOpenXR::GetControllerModelCount() const {
-  return 0;
+  return m.Is6DOF() ? 2 : 1;
 }
 
 const std::string
@@ -586,13 +587,11 @@ DeviceDelegateOpenXR::StartFrame(const FramePrediction aPrediction) {
   m.cameras[1]->SetHeadTransform(head);
 
   if (m.immersiveDisplay) {
-    // Setup capatibily caps for this frame
+    // Setup capability caps for this frame
     device::CapabilityFlags caps =
         device::Orientation | device::Present | device::InlineSession | device::ImmersiveVRSession;
-    if (location.locationFlags & XR_SPACE_LOCATION_POSITION_TRACKED_BIT) {
-      caps |= device::Position;
-    } else if (location.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) {
-      caps |= device::PositionEmulated;
+    if (location.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) {
+      caps |= m.Is6DOF() ? device::Position : device::PositionEmulated;
     }
     m.immersiveDisplay->SetCapabilityFlags(caps);
 
@@ -637,6 +636,9 @@ DeviceDelegateOpenXR::StartFrame(const FramePrediction aPrediction) {
           toRadians(view.fov.angleUp), toRadians(fabsf(view.fov.angleDown)));
     }
   }
+
+  // Update controllers
+  m.input.Update(m.session, m.predictedDisplayTime, m.localSpace, m.renderMode, m.controller);
 }
 
 void
@@ -745,6 +747,7 @@ DeviceDelegateOpenXR::EnterVR(const crow::BrowserEGLContext& aEGLContext) {
   m.reorientMatrix = vrb::Matrix::Identity();
 
   if (m.session != XR_NULL_HANDLE && m.graphicsBinding.context == aEGLContext.Context()) {
+    ProcessEvents();
     // Session already created and valid.
     return;
   }
@@ -763,6 +766,7 @@ DeviceDelegateOpenXR::EnterVR(const crow::BrowserEGLContext& aEGLContext) {
   CHECK(m.session != XR_NULL_HANDLE);
   VRB_LOG("OpenXR session created succesfully");
 
+  m.input.Initialize(m.instance, m.session);
   m.UpdateSpaces();
   m.InitializeViews();
   m.InitializeImmersiveDisplay();

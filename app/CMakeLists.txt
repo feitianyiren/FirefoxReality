@@ -108,6 +108,7 @@ target_sources(
     PUBLIC
     src/openxr/cpp/DeviceDelegateOpenXR.cpp
     src/openxr/cpp/OpenXRSwapChain.cpp
+    src/openxr/cpp/OpenXRInput.cpp
     )
 add_custom_command(TARGET native-lib POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
