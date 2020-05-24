@@ -25,9 +25,15 @@ private:
   std::vector<XrSwapchainImageBaseHeader*> images;
   std::vector<vrb::FBOPtr> fbos;
   vrb::FBOPtr acquiredFBO;
+  JNIEnv* env = nullptr;
+  jobject surface = nullptr;
+  XrSession session = XR_NULL_HANDLE;
 public:
+  ~OpenXRSwapChain();
+
   static OpenXRSwapChainPtr create();
-  void Init(vrb::RenderContextPtr &aContext, XrSession aSession, const XrSwapchainCreateInfo& aInfo, device::RenderMode aRenderMode);
+  void InitFBO(vrb::RenderContextPtr &aContext, XrSession aSession, const XrSwapchainCreateInfo& aInfo, device::RenderMode aRenderMode);
+  void InitAndroidSurface(JNIEnv* aEnv, XrSession aSession, const XrSwapchainCreateInfo& aInfo);
   void AcquireImage();
   void ReleaseImage();
   void BindFBO();
@@ -35,6 +41,9 @@ public:
   inline XrSwapchain SwapChain() const { return swapchain;}
   inline int32_t Width() const { return info.width; }
   inline int32_t Height() const { return info.height; }
+  inline jobject AndroidSurface() const { return surface; }
+  inline JNIEnv* Env() const { return  env; };
+  inline XrSession Session() const { return session; }
 };
 
 }

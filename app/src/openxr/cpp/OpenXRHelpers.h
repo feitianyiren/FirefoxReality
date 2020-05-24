@@ -107,4 +107,14 @@ inline vrb::Matrix XrPoseToMatrix(const XrPosef& aPose) {
   return matrix;
 }
 
+inline XrPosef MatrixToXrPose(const vrb::Matrix& aMatrix) {
+    vrb::Quaternion q;
+    q.SetFromRotationMatrix(aMatrix);
+    vrb::Vector p = aMatrix.GetTranslation();
+    XrPosef result;
+    result.orientation = XrQuaternionf{q.x(), q.y(), q.z(), q.w()};
+    result.position = XrVector3f{p.x(), p.y(), p.z()};
+    return result;
+}
+
 }  // namespace crow

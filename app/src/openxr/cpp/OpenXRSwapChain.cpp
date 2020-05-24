@@ -12,11 +12,12 @@ OpenXRSwapChain::create() {
 }
 
 void
-OpenXRSwapChain::Init(vrb::RenderContextPtr &aContext, XrSession aSession, const XrSwapchainCreateInfo& aInfo, device::RenderMode aRenderMode) {
+OpenXRSwapChain::InitFBO(vrb::RenderContextPtr &aContext, XrSession aSession, const XrSwapchainCreateInfo& aInfo, device::RenderMode aRenderMode) {
   Destroy();
   info = aInfo;
   context = aContext;
   renderMode = aRenderMode;
+  session = aSession;
 
   CHECK_XRCMD(xrCreateSwapchain(aSession, &info, &swapchain));
   CHECK(swapchain != XR_NULL_HANDLE);
@@ -34,7 +35,20 @@ OpenXRSwapChain::Init(vrb::RenderContextPtr &aContext, XrSession aSession, const
 }
 
 void
+OpenXRSwapChain::InitAndroidSurface(JNIEnv* aEnv, XrSession aSession, const XrSwapchainCreateInfo& aInfo) {
+  Destroy();
+  info = aInfo;
+  env = aEnv;
+  session = aSession;
+  CHECK_MSG(env, "JNIEnv must be not null");
+  CHECK_XRCMD(xrCreateSwapchainAndroidSurfaceKHR(aSession, &info, &swapchain, &surface));
+  CHECK(surface);
+  surface = env->NewGlobalRef(surface);
+}
+
+void
 OpenXRSwapChain::AcquireImage() {
+  CHECK_MSG(!surface, "AcquireImage must not be called for Android Surfaces");
   CHECK_MSG(!acquiredFBO, "Expected no acquired FBOs. ReleaseImage not called?");
 
   XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
@@ -77,6 +91,7 @@ OpenXRSwapChain::AcquireImage() {
 
 void
 OpenXRSwapChain::ReleaseImage() {
+  CHECK_MSG(!surface, "ReleaseImage must not be called for Android Surfaces");
   CHECK_MSG(acquiredFBO, "Expected a valid acquired FBO. AcquireImage not called?");
 
   XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
@@ -86,6 +101,7 @@ OpenXRSwapChain::ReleaseImage() {
 
 void
 OpenXRSwapChain::BindFBO() {
+  CHECK_MSG(!surface, "BindFBO must not be called for Android Surfaces");
   CHECK_MSG(acquiredFBO, "Expected a valid acquired FBO. AcquireImage not called?");
   acquiredFBO->Bind();
 }
@@ -102,6 +118,17 @@ OpenXRSwapChain::Destroy() {
     xrDestroySwapchain(swapchain);
     swapchain = XR_NULL_HANDLE;
   }
+  if (surface) {
+    CHECK_MSG(env, "JNIEnv must be non null to release the AndroidSurface reference");
+    env->DeleteGlobalRef(surface);
+    surface = nullptr;
+  }
+  session = XR_NULL_HANDLE;
+  env = nullptr;
+}
+
+OpenXRSwapChain::~OpenXRSwapChain() {
+  Destroy();
 }
 
 }

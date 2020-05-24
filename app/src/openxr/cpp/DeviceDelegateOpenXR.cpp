@@ -196,7 +196,7 @@ struct DeviceDelegateOpenXR::State {
     for (uint32_t i = 0; i < viewCount; i++) {
       auto swapChain = OpenXRSwapChain::create();
       XrSwapchainCreateInfo info = GetSwapChainCreateInfo();
-      swapChain->Init(render, session, info, renderMode);
+      swapChain->InitFBO(render, session, info, renderMode);
       eyeSwapChains.push_back(swapChain);
     }
     VRB_DEBUG("OpenXR available views: %d", (int)eyeSwapChains.size());
@@ -231,7 +231,7 @@ struct DeviceDelegateOpenXR::State {
     info.mipCount = 1;
     info.faceCount = 1;
     info.sampleCount = viewConfig.front().recommendedSwapchainSampleCount;
-    info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
     return info;
   }
 
