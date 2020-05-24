@@ -26,231 +26,103 @@ OpenXRInput::Initialize(XrInstance instance, XrSession session) {
   CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left", &handSubactionPath[Hand::Left]));
   CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right", &handSubactionPath[Hand::Right]));
 
-  // Create actions. We try to mimic https://www.w3.org/TR/webxr-gamepads-module-1/#xr-standard-gamepad-mapping
-  {
-    // Create an input action for getting the left and right hand poses.
+
+  auto createPoseAction = [&](const char * name, XrAction* action){
     XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
     actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
-    strcpy(actionInfo.actionName, "hand_pose");
-    strcpy(actionInfo.localizedActionName, "Hand Pose");
+    strcpy(actionInfo.actionName, name);
+    strcpy(actionInfo.localizedActionName, name);
     actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
     actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionPose));
+    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, action));
+  };
 
-    // Create input actions for menu click detection, usually used for back action.
+  auto createBooleanAction = [&](const char * name, XrAction* action){
+    XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
     actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "menu");
-    strcpy(actionInfo.localizedActionName, "Menu");
+    strcpy(actionInfo.actionName, name);
+    strcpy(actionInfo.localizedActionName, name);
     actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
     actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionMenuClick));
+    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, action));
+  };
 
-    // Create an input action for trigger click, touch and value detection
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "trigger_click");
-    strcpy(actionInfo.localizedActionName, "Trigger click");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionTriggerClick));
-
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "trigger_touch");
-    strcpy(actionInfo.localizedActionName, "Trigger touch");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionTriggerTouch));
-
+  auto createFloatAction = [&](const char * name, XrAction* action){
+    XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
     actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
-    strcpy(actionInfo.actionName, "trigger_value");
-    strcpy(actionInfo.localizedActionName, "Trigger value");
+    strcpy(actionInfo.actionName, name);
+    strcpy(actionInfo.localizedActionName, name);
     actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
     actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionTriggerValue));
+    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, action));
+  };
 
-    // Create an input action for squeeze click and value detection
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "squeeze_click");
-    strcpy(actionInfo.localizedActionName, "Squeeze click");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionSqueezeClick));
+  // Create actions. We try to mimic https://www.w3.org/TR/webxr-gamepads-module-1/#xr-standard-gamepad-mapping
+  // Create an input action for getting the left and right hand poses.
+  createPoseAction("hand_pose", &actionPose);
 
-    actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
-    strcpy(actionInfo.actionName, "squeeze_value");
-    strcpy(actionInfo.localizedActionName, "Squeeze value");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionSqueezeValue));
+  // Create input actions for menu click detection, usually used for back action.
+  createBooleanAction("menu", &actionMenuClick);
 
-    // Create an input action for trackpad click, touch and values detection
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "trackpad_click");
-    strcpy(actionInfo.localizedActionName, "Trackpad click");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionTrackpadClick));
+  // Create an input action for trigger click, touch and value detection
+  createBooleanAction("trigger_click", &actionTriggerClick);
+  createBooleanAction("trigger_touch", &actionTriggerTouch);
+  createFloatAction("trigger_value", &actionTriggerValue);
 
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "trackpad_touch");
-    strcpy(actionInfo.localizedActionName, "Trackpad touch");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionTrackpadTouch));
+  // Create an input action for squeeze click and value detection
+  createBooleanAction("squeeze_click", &actionSqueezeClick);
+  createFloatAction("squeeze_value", &actionSqueezeValue);
 
-    actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
-    strcpy(actionInfo.actionName, "trackpad_value_x");
-    strcpy(actionInfo.localizedActionName, "Trackpad value X");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionTrackpadX));
+  // Create an input action for trackpad click, touch and values detection
+  createBooleanAction("trackpad_click", &actionTrackpadClick);
+  createBooleanAction("trackpad_touch", &actionTrackpadTouch);
+  createFloatAction("trackpad_value_x", &actionTrackpadX);
+  createFloatAction("trackpad_value_y", &actionTrackpadY);
 
-    actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
-    strcpy(actionInfo.actionName, "trackpad_value_y");
-    strcpy(actionInfo.localizedActionName, "Trackpad value Y");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionTrackpadY));
+  // Create an input action for thumbstick click, touch and values detection
+  createBooleanAction("thumbstick_click", &actionThumbstickClick);
+  createBooleanAction("thumbstick_touch", &actionThumbstickTouch);
+  createFloatAction("thumbstick_value_x", &actionThumbstickX);
+  createFloatAction("thumbstick_value_y", &actionThumbstickY);
 
-    // Create an input action for thumbstick click, touch and values detection
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "thumbstick_click");
-    strcpy(actionInfo.localizedActionName, "Thumbstick click");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionThumbstickClick));
-
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "thumbstick_touch");
-    strcpy(actionInfo.localizedActionName, "Thumbstick touch");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionThumbstickTouch));
-
-    actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
-    strcpy(actionInfo.actionName, "thumbstick_value_x");
-    strcpy(actionInfo.localizedActionName, "Thumbstick value X");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionThumbstickX));
-
-    actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
-    strcpy(actionInfo.actionName, "thumbstick_value_y");
-    strcpy(actionInfo.localizedActionName, "Thumbstick value Y");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionThumbstickY));
-
-    // Create an input action for ButtonA and Button B clicks and touch
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "button_a_click");
-    strcpy(actionInfo.localizedActionName, "Button A click");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionButtonAClick));
-
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "button_a_touch");
-    strcpy(actionInfo.localizedActionName, "Button A touch");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionButtonATouch));
-
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "button_b_click");
-    strcpy(actionInfo.localizedActionName, "Button B click");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionButtonBClick));
-
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, "button_b_touch");
-    strcpy(actionInfo.localizedActionName, "Button B touch");
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, &actionButtonBTouch));
-
-  }
+  // Create an input action for ButtonA and Button B clicks and touch
+  createBooleanAction("button_a_click", &actionButtonAClick);
+  createBooleanAction("button_a_touch", &actionButtonATouch);
+  createBooleanAction("button_b_click", &actionButtonBClick);
+  createBooleanAction("button_b_touch", &actionButtonBTouch);
 
   // See https://www.khronos.org/registry/OpenXR/specs/1.0/html/xrspec.html#semantic-path-interaction-profiles
-  std::array<XrPath, Hand::Count> selectClickPath;
-  std::array<XrPath, Hand::Count> triggerValuePath;
-  std::array<XrPath, Hand::Count> triggerTouchPath;
-  std::array<XrPath, Hand::Count> triggerClickPath;
-  std::array<XrPath, Hand::Count> squeezeValuePath;
-  std::array<XrPath, Hand::Count> squeezeClickPath;
-  std::array<XrPath, Hand::Count> posePath;
-  std::array<XrPath, Hand::Count> hapticPath;
-  std::array<XrPath, Hand::Count> menuClickPath;
-  std::array<XrPath, Hand::Count> backClickPath;
-  std::array<XrPath, Hand::Count> trackpadClickPath;
-  std::array<XrPath, Hand::Count> trackpadTouchPath;
-  std::array<XrPath, Hand::Count> trackpadXPath;
-  std::array<XrPath, Hand::Count> trackpadYPath;
-  std::array<XrPath, Hand::Count> thumbstickClickPath;
-  std::array<XrPath, Hand::Count> thumbstickTouchPath;
-  std::array<XrPath, Hand::Count> thumbstickXPath;
-  std::array<XrPath, Hand::Count> thumbstickYPath;
-  std::array<XrPath, Hand::Count> buttonAClickPath;
-  std::array<XrPath, Hand::Count> buttonATouchPath;
-  std::array<XrPath, Hand::Count> buttonBClickPath;
-  std::array<XrPath, Hand::Count> buttonBTouchPath;
-  std::array<XrPath, Hand::Count> buttonXClickPath;
-  std::array<XrPath, Hand::Count> buttonXTouchPath;
-  std::array<XrPath, Hand::Count> buttonYClickPath;
-  std::array<XrPath, Hand::Count> buttonYTouchPath;
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/select/click", &selectClickPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/select/click", &selectClickPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/trigger/value", &triggerValuePath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/trigger/value", &triggerValuePath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/trigger/touch", &triggerTouchPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/trigger/touch", &triggerTouchPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/trigger/click", &triggerClickPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/trigger/click", &triggerClickPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/squeeze/value", &squeezeValuePath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/squeeze/value", &squeezeValuePath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/squeeze/click", &squeezeClickPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/squeeze/click", &squeezeClickPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/aim/pose", &posePath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/aim/pose", &posePath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/output/haptic", &hapticPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/output/haptic", &hapticPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/menu/click", &menuClickPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/menu/click", &menuClickPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/back/click", &backClickPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/back/click", &backClickPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/trackpad/click", &trackpadClickPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/trackpad/click", &trackpadClickPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/trackpad/touch", &trackpadTouchPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/trackpad/touch", &trackpadTouchPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/trackpad/x", &trackpadXPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/trackpad/x", &trackpadXPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/trackpad/y", &trackpadYPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/trackpad/y", &trackpadYPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/thumbstick/click", &thumbstickClickPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/thumbstick/click", &thumbstickClickPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/thumbstick/touch", &thumbstickTouchPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/thumbstick/touch", &thumbstickTouchPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/thumbstick/x", &thumbstickXPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/thumbstick/x", &thumbstickXPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/thumbstick/y", &thumbstickYPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/thumbstick/y", &thumbstickYPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/a/click", &buttonAClickPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/a/click", &buttonAClickPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/a/touch", &buttonATouchPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/a/touch", &buttonATouchPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/b/click", &buttonBClickPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/b/click", &buttonBClickPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/b/touch", &buttonBTouchPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/b/touch", &buttonBTouchPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/x/click", &buttonXClickPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/x/click", &buttonXClickPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/x/touch", &buttonXTouchPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/x/touch", &buttonXTouchPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/y/click", &buttonYClickPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/y/click", &buttonYClickPath[Hand::Right]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/input/y/touch", &buttonYTouchPath[Hand::Left]));
-  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/input/y/touch", &buttonYTouchPath[Hand::Right]));
+#define DECLARE_PATH(subpath, variable) \
+  std::array<XrPath, Hand::Count> variable; \
+  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/left/" subpath, &variable[Hand::Left])); \
+  CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right/" subpath, &variable[Hand::Right]));
 
+  DECLARE_PATH("input/select/click", selectClickPath);
+  DECLARE_PATH("input/trigger/value", triggerValuePath);
+  DECLARE_PATH("input/trigger/touch", triggerTouchPath);
+  DECLARE_PATH("input/trigger/click", triggerClickPath);
+  DECLARE_PATH("input/squeeze/value", squeezeValuePath);
+  DECLARE_PATH("input/squeeze/click", squeezeClickPath);
+  DECLARE_PATH("input/aim/pose", posePath);
+  DECLARE_PATH("output/haptic", hapticPath);
+  DECLARE_PATH("input/menu/click", menuClickPath);
+  DECLARE_PATH("input/back/click", backClickPath);
+  DECLARE_PATH("input/trackpad/click", trackpadClickPath);
+  DECLARE_PATH("input/trackpad/touch", trackpadTouchPath);
+  DECLARE_PATH("input/trackpad/x", trackpadXPath);
+  DECLARE_PATH("input/trackpad/y", trackpadYPath);
+  DECLARE_PATH("input/thumbstick/click", thumbstickClickPath);
+  DECLARE_PATH("input/thumbstick/touch", thumbstickTouchPath);
+  DECLARE_PATH("input/thumbstick/x", thumbstickXPath);
+  DECLARE_PATH("input/thumbstick/y", thumbstickYPath);
+  DECLARE_PATH("input/a/click", buttonAClickPath);
+  DECLARE_PATH("input/a/touch", buttonATouchPath);
+  DECLARE_PATH("input/b/click", buttonBClickPath);
+  DECLARE_PATH("input/b/touch", buttonBTouchPath);
+  DECLARE_PATH("input/x/click", buttonXClickPath);
+  DECLARE_PATH("input/x/touch", buttonXTouchPath);
+  DECLARE_PATH("input/y/click", buttonYClickPath);
+  DECLARE_PATH("input/y/touch", buttonYTouchPath);
 
   // Suggest bindings for KHR Simple. Default fallback when we have not implemented a specific controller binding.
   {
@@ -295,6 +167,7 @@ OpenXRInput::Initialize(XrInstance instance, XrSession session) {
     suggestedBindings.interactionProfile = khrSimpleInteractionProfilePath;
     suggestedBindings.suggestedBindings = bindings.data();
     suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
+    // TODO: Fix XR_ERROR_PATH_UNSUPPORTED error
     //CHECK_XRCMD(xrSuggestInteractionProfileBindings(instance, &suggestedBindings));
   }
 
@@ -366,7 +239,7 @@ void OpenXRInput::Update(XrSession session, XrTime predictedDisplayTime, XrSpace
   CHECK_XRCMD(xrSyncActions(session, &syncInfo));
 
   // Query actions and pose state for each hand
-  for (auto hand : {Hand::Right}) {
+  for (auto hand : {Hand::Left, Hand::Right}) {
     const int index = hand;
     ControllerState& controller = controllerState[hand];
 
@@ -432,79 +305,43 @@ void OpenXRInput::Update(XrSession session, XrTime predictedDisplayTime, XrSpace
       continue;
     }
 
+#define QUERY_BOOLEAN_STATE(variable, actionName) \
+    XrActionStateBoolean variable{XR_TYPE_ACTION_STATE_BOOLEAN}; \
+    { \
+        XrActionStateGetInfo info{XR_TYPE_ACTION_STATE_GET_INFO}; \
+        info.subactionPath = handSubactionPath[hand]; \
+        info.action = actionName; \
+        CHECK_XRCMD(xrGetActionStateBoolean(session, &info, &variable)); \
+    }
+
+#define QUERY_FLOAT_STATE(variable, actionName) \
+    XrActionStateFloat variable{XR_TYPE_ACTION_STATE_FLOAT}; \
+    { \
+        XrActionStateGetInfo info{XR_TYPE_ACTION_STATE_GET_INFO}; \
+        info.subactionPath = handSubactionPath[hand]; \
+        info.action = actionName; \
+        CHECK_XRCMD(xrGetActionStateFloat(session, &info, &variable)); \
+    }
+
     // Query buttons and axes
-    XrActionStateBoolean menuClick{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionMenuClick;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &menuClick));
-
-    XrActionStateBoolean triggerClick{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionTriggerClick;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &triggerClick));
-
-    XrActionStateBoolean triggerTouch{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionTriggerTouch;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &triggerTouch));
-
-    XrActionStateFloat triggerValue{XR_TYPE_ACTION_STATE_FLOAT};
-    getInfo.action = actionTriggerValue;
-    CHECK_XRCMD(xrGetActionStateFloat(session, &getInfo, &triggerValue));
-
-    XrActionStateBoolean squeezeClick{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionSqueezeClick;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &squeezeClick));
-
-    XrActionStateFloat squeezeValue{XR_TYPE_ACTION_STATE_FLOAT};
-    getInfo.action = actionSqueezeValue;
-    CHECK_XRCMD(xrGetActionStateFloat(session, &getInfo, &squeezeValue));
-
-    XrActionStateBoolean trackpadClick{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionTrackpadClick;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &trackpadClick));
-
-    XrActionStateBoolean trackpadTouch{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionTrackpadTouch;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &trackpadTouch));
-
-    XrActionStateFloat trackpadX{XR_TYPE_ACTION_STATE_FLOAT};
-    getInfo.action = actionTrackpadX;
-    CHECK_XRCMD(xrGetActionStateFloat(session, &getInfo, &trackpadX));
-
-    XrActionStateFloat trackpadY{XR_TYPE_ACTION_STATE_FLOAT};
-    getInfo.action = actionTrackpadY;
-    CHECK_XRCMD(xrGetActionStateFloat(session, &getInfo, &trackpadY));
-
-    XrActionStateBoolean thumbStickClick{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionThumbstickClick;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &thumbStickClick));
-
-    XrActionStateBoolean thumbstickTouch{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionThumbstickTouch;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &thumbstickTouch));
-
-    XrActionStateFloat thumbstickX{XR_TYPE_ACTION_STATE_FLOAT};
-    getInfo.action = actionThumbstickX;
-    CHECK_XRCMD(xrGetActionStateFloat(session, &getInfo, &thumbstickX));
-
-    XrActionStateFloat thumbstickY{XR_TYPE_ACTION_STATE_FLOAT};
-    getInfo.action = actionThumbstickY;
-    CHECK_XRCMD(xrGetActionStateFloat(session, &getInfo, &thumbstickY));
-
-    XrActionStateBoolean buttonAClick{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionButtonAClick;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &buttonAClick));
-
-    XrActionStateBoolean buttonATouch{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionButtonATouch;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &buttonATouch));
-
-    XrActionStateBoolean buttonBClick{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionButtonBClick;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &buttonBClick));
-
-    XrActionStateBoolean buttonBTouch{XR_TYPE_ACTION_STATE_BOOLEAN};
-    getInfo.action = actionButtonBTouch;
-    CHECK_XRCMD(xrGetActionStateBoolean(session, &getInfo, &buttonBTouch));
-
+    QUERY_BOOLEAN_STATE(menuClick, actionMenuClick);
+    QUERY_BOOLEAN_STATE(triggerClick, actionTriggerClick);
+    QUERY_BOOLEAN_STATE(triggerTouch, actionTriggerTouch);
+    QUERY_FLOAT_STATE(triggerValue, actionTriggerValue);
+    QUERY_BOOLEAN_STATE(squeezeClick, actionSqueezeClick);
+    QUERY_FLOAT_STATE(squeezeValue, actionSqueezeValue);
+    QUERY_BOOLEAN_STATE(trackpadClick, actionTrackpadClick);
+    QUERY_BOOLEAN_STATE(trackpadTouch, actionTrackpadTouch);
+    QUERY_FLOAT_STATE(trackpadX, actionTrackpadX);
+    QUERY_FLOAT_STATE(trackpadY, actionTrackpadY);
+    QUERY_BOOLEAN_STATE(thumbStickClick, actionThumbstickTouch);
+    QUERY_BOOLEAN_STATE(thumbstickTouch, actionThumbstickTouch);
+    QUERY_FLOAT_STATE(thumbstickX, actionThumbstickX);
+    QUERY_FLOAT_STATE(thumbstickY, actionThumbstickY);
+    QUERY_BOOLEAN_STATE(buttonAClick, actionButtonAClick);
+    QUERY_BOOLEAN_STATE(buttonATouch, actionButtonATouch);
+    QUERY_BOOLEAN_STATE(buttonBClick, actionButtonBClick);
+    QUERY_BOOLEAN_STATE(buttonBTouch, actionButtonBTouch);
 
     // Map to controller delegate
     std::array<float, 4> axes;
@@ -526,7 +363,7 @@ void OpenXRInput::Update(XrSession session, XrTime predictedDisplayTime, XrSpace
       if (triggerValue.isActive) {
         value = triggerValue.currentState;
       }
-      VRB_ERROR("makelele trigger pressed: %d", pressed);
+      VRB_ERROR("makelele trigger pressed on hand %d: %d", hand, pressed);
       delegate->SetButtonState(index, ControllerDelegate::BUTTON_TRIGGER, device::kImmersiveButtonTrigger, pressed, touched, value);
       if (pressed && renderMode == device::RenderMode::Immersive) {
         delegate->SetSelectActionStart(index);
