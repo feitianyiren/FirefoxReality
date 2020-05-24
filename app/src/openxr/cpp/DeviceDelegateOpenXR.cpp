@@ -629,11 +629,13 @@ DeviceDelegateOpenXR::StartFrame(const FramePrediction aPrediction) {
 
     if (m.immersiveDisplay) {
       const device::Eye eye = i == 0 ? device::Eye::Left : device::Eye::Right;
-      auto toRadians = [](float angle) -> float {
+      auto toDegrees = [](float angle) -> float {
         return angle * 180.0f / (float)M_PI;
       };
-      m.immersiveDisplay->SetFieldOfView(eye, toRadians(fabsf(view.fov.angleLeft)), toRadians(view.fov.angleRight),
-          toRadians(view.fov.angleUp), toRadians(fabsf(view.fov.angleDown)));
+      m.immersiveDisplay->SetFieldOfView(eye, toDegrees(fabsf(view.fov.angleLeft)), toDegrees(view.fov.angleRight),
+                                         toDegrees(view.fov.angleUp), toDegrees(fabsf(view.fov.angleDown)));
+      vrb::Vector offset = eyeTransform.GetTranslation();
+      m.immersiveDisplay->SetEyeOffset(eye, offset.x(), offset.y(), offset.z());
     }
   }
 
