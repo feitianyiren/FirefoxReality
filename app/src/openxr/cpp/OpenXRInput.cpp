@@ -27,69 +27,68 @@ OpenXRInput::Initialize(XrInstance instance, XrSession session) {
   CHECK_XRCMD(xrStringToPath(instance, "/user/hand/right", &handSubactionPath[Hand::Right]));
 
 
-  auto createPoseAction = [&](const char * name, XrAction* action){
+  auto createAction = [&](const char * name, Hand hand, XrActionType actionType, XrAction * action) {
+    std::string actionName = std::string(name) + (hand == 0 ? "_left" : "_right");
     XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
-    actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
-    strcpy(actionInfo.actionName, name);
-    strcpy(actionInfo.localizedActionName, name);
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
+    actionInfo.actionType = actionType;
+    strcpy(actionInfo.actionName, actionName.c_str());
+    strcpy(actionInfo.localizedActionName, actionName.c_str());
+    actionInfo.countSubactionPaths = 1;
+    actionInfo.subactionPaths = &handSubactionPath[hand];
     CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, action));
   };
 
-  auto createBooleanAction = [&](const char * name, XrAction* action){
-    XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
-    actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
-    strcpy(actionInfo.actionName, name);
-    strcpy(actionInfo.localizedActionName, name);
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, action));
+  auto createPoseAction = [&](const char * name, std::array<XrAction, 2>& action){
+    for (auto hand: {Hand::Left, Hand::Right}) {
+      createAction(name, hand, XR_ACTION_TYPE_POSE_INPUT, &action[hand]);
+    }
   };
 
-  auto createFloatAction = [&](const char * name, XrAction* action){
-    XrActionCreateInfo actionInfo{XR_TYPE_ACTION_CREATE_INFO};
-    actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
-    strcpy(actionInfo.actionName, name);
-    strcpy(actionInfo.localizedActionName, name);
-    actionInfo.countSubactionPaths = uint32_t(handSubactionPath.size());
-    actionInfo.subactionPaths = handSubactionPath.data();
-    CHECK_XRCMD(xrCreateAction(actionSet, &actionInfo, action));
+  auto createBooleanAction = [&](const char * name, std::array<XrAction, 2>& action){
+    for (auto hand: {Hand::Left, Hand::Right}) {
+      createAction(name, hand, XR_ACTION_TYPE_BOOLEAN_INPUT, &action[hand]);
+    }
+  };
+
+  auto createFloatAction = [&](const char * name, std::array<XrAction, 2>& action){
+    for (auto hand: {Hand::Left, Hand::Right}) {
+      createAction(name, hand, XR_ACTION_TYPE_FLOAT_INPUT, &action[hand]);
+    }
   };
 
   // Create actions. We try to mimic https://www.w3.org/TR/webxr-gamepads-module-1/#xr-standard-gamepad-mapping
   // Create an input action for getting the left and right hand poses.
-  createPoseAction("hand_pose", &actionPose);
+  createPoseAction("hand_pose", actionPose);
 
   // Create input actions for menu click detection, usually used for back action.
-  createBooleanAction("menu", &actionMenuClick);
+  createBooleanAction("menu", actionMenuClick);
 
   // Create an input action for trigger click, touch and value detection
-  createBooleanAction("trigger_click", &actionTriggerClick);
-  createBooleanAction("trigger_touch", &actionTriggerTouch);
-  createFloatAction("trigger_value", &actionTriggerValue);
+  createBooleanAction("trigger_click", actionTriggerClick);
+  createBooleanAction("trigger_touch", actionTriggerTouch);
+  createFloatAction("trigger_value", actionTriggerValue);
 
   // Create an input action for squeeze click and value detection
-  createBooleanAction("squeeze_click", &actionSqueezeClick);
-  createFloatAction("squeeze_value", &actionSqueezeValue);
+  createBooleanAction("squeeze_click", actionSqueezeClick);
+  createFloatAction("squeeze_value",  actionSqueezeValue);
 
   // Create an input action for trackpad click, touch and values detection
-  createBooleanAction("trackpad_click", &actionTrackpadClick);
-  createBooleanAction("trackpad_touch", &actionTrackpadTouch);
-  createFloatAction("trackpad_value_x", &actionTrackpadX);
-  createFloatAction("trackpad_value_y", &actionTrackpadY);
+  createBooleanAction("trackpad_click", actionTrackpadClick);
+  createBooleanAction("trackpad_touch", actionTrackpadTouch);
+  createFloatAction("trackpad_value_x", actionTrackpadX);
+  createFloatAction("trackpad_value_y", actionTrackpadY);
 
   // Create an input action for thumbstick click, touch and values detection
-  createBooleanAction("thumbstick_click", &actionThumbstickClick);
-  createBooleanAction("thumbstick_touch", &actionThumbstickTouch);
-  createFloatAction("thumbstick_value_x", &actionThumbstickX);
-  createFloatAction("thumbstick_value_y", &actionThumbstickY);
+  createBooleanAction("thumbstick_click", actionThumbstickClick);
+  createBooleanAction("thumbstick_touch", actionThumbstickTouch);
+  createFloatAction("thumbstick_value_x", actionThumbstickX);
+  createFloatAction("thumbstick_value_y", actionThumbstickY);
 
   // Create an input action for ButtonA and Button B clicks and touch
-  createBooleanAction("button_a_click", &actionButtonAClick);
-  createBooleanAction("button_a_touch", &actionButtonATouch);
-  createBooleanAction("button_b_click", &actionButtonBClick);
-  createBooleanAction("button_b_touch", &actionButtonBTouch);
+  createBooleanAction("button_a_click", actionButtonAClick);
+  createBooleanAction("button_a_touch", actionButtonATouch);
+  createBooleanAction("button_b_click", actionButtonBClick);
+  createBooleanAction("button_b_touch", actionButtonBTouch);
 
   // See https://www.khronos.org/registry/OpenXR/specs/1.0/html/xrspec.html#semantic-path-interaction-profiles
 #define DECLARE_PATH(subpath, variable) \
@@ -130,12 +129,12 @@ OpenXRInput::Initialize(XrInstance instance, XrSession session) {
     CHECK_XRCMD(
         xrStringToPath(instance, "/interaction_profiles/khr/simple_controller", &khrSimpleInteractionProfilePath));
     std::vector<XrActionSuggestedBinding> bindings{{// Generic controller mappings
-                                                     {actionPose, posePath[Hand::Left]},
-                                                     {actionPose, posePath[Hand::Right]},
-                                                     {actionMenuClick, menuClickPath[Hand::Left]},
-                                                     {actionMenuClick, menuClickPath[Hand::Right]},
-                                                     {actionTriggerClick, selectClickPath[Hand::Left]},
-                                                     {actionTriggerClick, selectClickPath[Hand::Right]}}};
+                                                     {actionPose[Hand::Left], posePath[Hand::Left]},
+                                                     {actionPose[Hand::Right], posePath[Hand::Right]},
+                                                     {actionMenuClick[Hand::Left], menuClickPath[Hand::Left]},
+                                                     {actionMenuClick[Hand::Right], menuClickPath[Hand::Right]},
+                                                     {actionTriggerClick[Hand::Left], selectClickPath[Hand::Left]},
+                                                     {actionTriggerClick[Hand::Right], selectClickPath[Hand::Right]}}};
     XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
     suggestedBindings.interactionProfile = khrSimpleInteractionProfilePath;
     suggestedBindings.suggestedBindings = bindings.data();
@@ -145,30 +144,7 @@ OpenXRInput::Initialize(XrInstance instance, XrSession session) {
 
   // Suggest bindings for Oculus Go controller
   {
-    XrPath khrSimpleInteractionProfilePath;
-    CHECK_XRCMD(
-        xrStringToPath(instance, "/interaction_profiles/oculus/go_controller", &khrSimpleInteractionProfilePath));
-    std::vector<XrActionSuggestedBinding> bindings{{// Controller mappings
-                                                       {actionPose, posePath[Hand::Left]},
-                                                       {actionPose, posePath[Hand::Right]},
-                                                       {actionMenuClick, backClickPath[Hand::Left]},
-                                                       {actionMenuClick, backClickPath[Hand::Right]},
-                                                       {actionTriggerClick, triggerClickPath[Hand::Left]},
-                                                       {actionTriggerClick, triggerClickPath[Hand::Right]},
-                                                       {actionTrackpadClick, trackpadClickPath[Hand::Left]},
-                                                       {actionTrackpadClick, trackpadClickPath[Hand::Right]},
-                                                       {actionTrackpadTouch, trackpadTouchPath[Hand::Left]},
-                                                       {actionTrackpadTouch, trackpadTouchPath[Hand::Right]},
-                                                       {actionTrackpadX, trackpadXPath[Hand::Left]},
-                                                       {actionTrackpadX, trackpadXPath[Hand::Right]},
-                                                       {actionTrackpadY, trackpadYPath[Hand::Left]},
-                                                       {actionTrackpadY, trackpadYPath[Hand::Right]}}};
-    XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
-    suggestedBindings.interactionProfile = khrSimpleInteractionProfilePath;
-    suggestedBindings.suggestedBindings = bindings.data();
-    suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
-    // TODO: Fix XR_ERROR_PATH_UNSUPPORTED error
-    //CHECK_XRCMD(xrSuggestInteractionProfileBindings(instance, &suggestedBindings));
+
   }
 
   // Suggest bindings for Oculus Touch controller.
@@ -177,34 +153,34 @@ OpenXRInput::Initialize(XrInstance instance, XrSession session) {
     CHECK_XRCMD(
         xrStringToPath(instance, "/interaction_profiles/oculus/touch_controller", &khrSimpleInteractionProfilePath));
     std::vector<XrActionSuggestedBinding> bindings{{// Controller mappings
-                                                       {actionPose, posePath[Hand::Left]},
-                                                       {actionPose, posePath[Hand::Right]},
+                                                       {actionPose[Hand::Left], posePath[Hand::Left]},
+                                                       {actionPose[Hand::Right], posePath[Hand::Right]},
                                                        // Actions available only on left controller
-                                                       {actionMenuClick, menuClickPath[Hand::Left]},
-                                                       {actionButtonAClick, buttonXClickPath[Hand::Left]},
-                                                       {actionButtonATouch, buttonXTouchPath[Hand::Left]},
-                                                       {actionButtonBClick, buttonYClickPath[Hand::Left]},
-                                                       {actionButtonBTouch, buttonYTouchPath[Hand::Left]},
+                                                       {actionMenuClick[Hand::Left], menuClickPath[Hand::Left]},
+                                                       {actionButtonAClick[Hand::Left], buttonXClickPath[Hand::Left]},
+                                                       {actionButtonATouch[Hand::Left], buttonXTouchPath[Hand::Left]},
+                                                       {actionButtonBClick[Hand::Left], buttonYClickPath[Hand::Left]},
+                                                       {actionButtonBTouch[Hand::Left], buttonYTouchPath[Hand::Left]},
                                                        // Actions available only on right controller
-                                                       {actionButtonAClick, buttonAClickPath[Hand::Right]},
-                                                       {actionButtonATouch, buttonATouchPath[Hand::Right]},
-                                                       {actionButtonBClick, buttonAClickPath[Hand::Right]},
-                                                       {actionButtonBTouch, buttonATouchPath[Hand::Right]},
+                                                       {actionButtonAClick[Hand::Right], buttonAClickPath[Hand::Right]},
+                                                       {actionButtonATouch[Hand::Right], buttonATouchPath[Hand::Right]},
+                                                       {actionButtonBClick[Hand::Right], buttonAClickPath[Hand::Right]},
+                                                       {actionButtonBTouch[Hand::Right], buttonATouchPath[Hand::Right]},
                                                        // Actions available on both controllers
-                                                       {actionTriggerValue, triggerValuePath[Hand::Left]},
-                                                       {actionTriggerValue, triggerValuePath[Hand::Right]},
-                                                       {actionTriggerTouch, triggerTouchPath[Hand::Left]},
-                                                       {actionTriggerTouch, triggerTouchPath[Hand::Right]},
-                                                       {actionSqueezeValue, squeezeValuePath[Hand::Left]},
-                                                       {actionSqueezeValue, squeezeValuePath[Hand::Right]},
-                                                       {actionThumbstickClick, thumbstickClickPath[Hand::Left]},
-                                                       {actionThumbstickClick, thumbstickClickPath[Hand::Right]},
-                                                       {actionThumbstickTouch, thumbstickTouchPath[Hand::Left]},
-                                                       {actionThumbstickTouch, thumbstickTouchPath[Hand::Right]},
-                                                       {actionThumbstickX, thumbstickXPath[Hand::Left]},
-                                                       {actionThumbstickX, thumbstickXPath[Hand::Right]},
-                                                       {actionThumbstickY, thumbstickYPath[Hand::Left]},
-                                                       {actionThumbstickY, thumbstickYPath[Hand::Right]}}};
+                                                       {actionTriggerValue[Hand::Left], triggerValuePath[Hand::Left]},
+                                                       {actionTriggerValue[Hand::Right], triggerValuePath[Hand::Right]},
+                                                       {actionTriggerTouch[Hand::Left], triggerTouchPath[Hand::Left]},
+                                                       {actionTriggerTouch[Hand::Right], triggerTouchPath[Hand::Right]},
+                                                       {actionSqueezeValue[Hand::Left], squeezeValuePath[Hand::Left]},
+                                                       {actionSqueezeValue[Hand::Right], squeezeValuePath[Hand::Right]},
+                                                       {actionThumbstickClick[Hand::Left], thumbstickClickPath[Hand::Left]},
+                                                       {actionThumbstickClick[Hand::Right], thumbstickClickPath[Hand::Right]},
+                                                       {actionThumbstickTouch[Hand::Left], thumbstickTouchPath[Hand::Left]},
+                                                       {actionThumbstickTouch[Hand::Right], thumbstickTouchPath[Hand::Right]},
+                                                       {actionThumbstickX[Hand::Left], thumbstickXPath[Hand::Left]},
+                                                       {actionThumbstickX[Hand::Right], thumbstickXPath[Hand::Right]},
+                                                       {actionThumbstickY[Hand::Left], thumbstickYPath[Hand::Left]},
+                                                       {actionThumbstickY[Hand::Right], thumbstickYPath[Hand::Right]}}};
     XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
     suggestedBindings.interactionProfile = khrSimpleInteractionProfilePath;
     suggestedBindings.suggestedBindings = bindings.data();
@@ -213,13 +189,20 @@ OpenXRInput::Initialize(XrInstance instance, XrSession session) {
   }
 
   // Initialize pose actions
-  XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
-  actionSpaceInfo.action = actionPose;
-  actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
-  actionSpaceInfo.subactionPath = handSubactionPath[Hand::Left];
-  CHECK_XRCMD(xrCreateActionSpace(session, &actionSpaceInfo, &controllerState[Hand::Left].space));
-  actionSpaceInfo.subactionPath = handSubactionPath[Hand::Right];
-  CHECK_XRCMD(xrCreateActionSpace(session, &actionSpaceInfo, &controllerState[Hand::Right].space));
+  {
+    XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
+    actionSpaceInfo.action = actionPose[Hand::Left];
+    actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
+    actionSpaceInfo.subactionPath = handSubactionPath[Hand::Left];
+    CHECK_XRCMD(xrCreateActionSpace(session, &actionSpaceInfo, &controllerState[Hand::Left].space));
+  }
+  {
+    XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
+    actionSpaceInfo.action = actionPose[Hand::Right];
+    actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
+    actionSpaceInfo.subactionPath = handSubactionPath[Hand::Right];
+    CHECK_XRCMD(xrCreateActionSpace(session, &actionSpaceInfo, &controllerState[Hand::Right].space));
+  }
 
   // Attach actions to session
   XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
@@ -246,7 +229,7 @@ void OpenXRInput::Update(XrSession session, XrTime predictedDisplayTime, XrSpace
     // Query pose state
     XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
     getInfo.subactionPath = handSubactionPath[hand];
-    getInfo.action = actionPose;
+    getInfo.action = actionPose[hand];
     XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};
     CHECK_XRCMD(xrGetActionStatePose(session, &getInfo, &poseState));
 
@@ -310,7 +293,7 @@ void OpenXRInput::Update(XrSession session, XrTime predictedDisplayTime, XrSpace
     { \
         XrActionStateGetInfo info{XR_TYPE_ACTION_STATE_GET_INFO}; \
         info.subactionPath = handSubactionPath[hand]; \
-        info.action = actionName; \
+        info.action = actionName[hand]; \
         CHECK_XRCMD(xrGetActionStateBoolean(session, &info, &variable)); \
     }
 
@@ -319,7 +302,7 @@ void OpenXRInput::Update(XrSession session, XrTime predictedDisplayTime, XrSpace
     { \
         XrActionStateGetInfo info{XR_TYPE_ACTION_STATE_GET_INFO}; \
         info.subactionPath = handSubactionPath[hand]; \
-        info.action = actionName; \
+        info.action = actionName[hand]; \
         CHECK_XRCMD(xrGetActionStateFloat(session, &info, &variable)); \
     }
 
@@ -363,7 +346,7 @@ void OpenXRInput::Update(XrSession session, XrTime predictedDisplayTime, XrSpace
       if (triggerValue.isActive) {
         value = triggerValue.currentState;
       }
-      VRB_ERROR("makelele trigger pressed on hand %d: %d", hand, pressed);
+
       delegate->SetButtonState(index, ControllerDelegate::BUTTON_TRIGGER, device::kImmersiveButtonTrigger, pressed, touched, value);
       if (pressed && renderMode == device::RenderMode::Immersive) {
         delegate->SetSelectActionStart(index);
